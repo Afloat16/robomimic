@@ -67,6 +67,21 @@ class NStepTerminalReturnTest(unittest.TestCase):
                     result = self.process(algorithm, rewards, dones, 0.9)
                     torch.testing.assert_close(result["rewards"], self.oracle(rewards, dones, 0.9))
 
+    def test_integer_rewards_preserve_fractional_discounts(self):
+        for dtype in (torch.int64, torch.uint8):
+            rewards = torch.tensor([[2, 6, 7, 8], [2, 6, 7, 8]], dtype=dtype)
+            dones = torch.tensor([[0, 0, 0, 0], [0, 1, 1, 1]], dtype=dtype)
+            for algorithm in (BCQ, CQL, TD3_BC):
+                for gamma in (0.5, 0.99):
+                    for infinite in ((False,) if algorithm is CQL else (False, True)):
+                        with self.subTest(dtype=dtype, algorithm=algorithm.__name__,
+                                          gamma=gamma, infinite=infinite):
+                            result = self.process(algorithm, rewards, dones, gamma, infinite)
+                            torch.testing.assert_close(
+                                result["rewards"], self.oracle(rewards, dones, gamma, infinite)
+                            )
+                            self.assertEqual(result["rewards"].dtype, torch.float32)
+
     def test_rewards_after_termination_have_no_gradient(self):
         for algorithm in (BCQ, CQL, TD3_BC):
             with self.subTest(algorithm=algorithm.__name__):

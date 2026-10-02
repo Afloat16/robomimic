@@ -224,6 +224,10 @@ def discounted_return(rewards, dones, discount, infinite_horizon=False):
     Returns:
         torch.Tensor: discounted returns of shape (B, 1).
     """
+    # Demonstrations may store rewards as integer or boolean arrays.
+    # Form fractional discounts in floating point before the final batch cast.
+    if not rewards.is_floating_point():
+        rewards = rewards.float()
     terminal = dones.bool()
     active = torch.cat([
         torch.ones_like(terminal[:, :1]),
